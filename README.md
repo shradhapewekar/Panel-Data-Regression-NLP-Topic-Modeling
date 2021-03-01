@@ -3,6 +3,6 @@ This is a continuation of  [Natural-language-processing-Topic-Modeling](https://
 
 There are three types of regression for panel data:
 
-* 1)PooledOLS 
-* 2)Fixed-Effects (FE) Model
-* 3)Random-Effects (RE) Model
+* PooledOLS 
+* Fixed-Effects (FE) Model
+* Random-Effects (RE) Model
