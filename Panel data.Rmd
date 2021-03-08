@@ -1,0 +1,139 @@
+---
+title: "Panel Data Regression"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r cars}
+install.packages("plm")
+library(plm)
+library(foreign)
+library(tseries)
+library(lmtest)
+library(lattice)
+library(car)
+library(ggplot2)
+library(interactions)
+library(PerformanceAnalytics)
+library(lubridate)
+library(dplyr)
+install.packages("tidyverse")
+install.packages("gplots")
+library("gplots")
+```
+
+
+```{r}
+current_working_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+setwd(current_working_dir)
+
+d <-  import("paneldata_sample.xls")
+colSums(is.na(d))
+
+```
+```{r}
+d <-  subset(d, select = -c(year))
+d <- na.omit(d)
+d$month <- factor(d$month)
+d$gender <- factor(d$gender)
+
+
+scatterplot(PE~month|location, data=d)
+
+```
+Heterogeniety across location
+```{r}
+plotmeans(PE ~ location, data = d)
+```
+Heterogeniety across month
+```{r}
+plotmeans(PE ~ month, data = d)
+```
+
+```{r}
+
+df_num <-  subset(d, select = -c(user,month,gender,location,month_year))
+df_num <- na.omit(df_num)
+head(df_num)
+(res<-cor(df_num))
+
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+```
+```{r}
+ols <-lm(PE~SN+TC+KS+IN+gender, data =  d)
+summary(ols)
+
+```
+Fixed Effects Model
+```{r}
+fixed.dum <-lm(PE~SN+TC+KS+IN+gender+ factor(location) - 1, data = d)
+summary(fixed.dum)
+
+```
+Location-Specific Fixed Effects using the plm package
+```{r}
+p_dat<-pdata.frame(d,index = c("month" , "user" ,"location"))
+
+fixed <- plm(PE~SN+TC+KS+IN+gender, data=p_dat, model="within")
+summary(fixed)
+```
+```{r}
+# Display the fixed effects (constants for each month)
+fixef(fixed)
+
+```
+```{r}
+# Testing for fixed effects, null: OLS better than fixed
+# If the p-value is < 0.05 then the fixed effects model is a better choice
+pFtest(fixed, ols)
+
+```
+Random Effects Model
+```{r}
+
+random <- plm(PE ~ SN + TC + KS + IN + gender, data=p_dat, model="random")
+summary(random)
+```
+Fixed vs Random
+```{r}
+phtest(fixed, random)
+
+# If the p-value is significant p <0.05 then use fixed effects,
+```
+Time-fixed effects testing
+```{r}
+fixed.time <- plm(PE ~ SN + TC + KS + IN + gender + factor(month), data=p_dat, model="within")
+summary(fixed.time)
+
+```
+```{r}
+plmtest(fixed, c("time"), type=("bp"))
+# If the p value < 0.05 then use time-fixed effects. For our model no need to use time-fixed effects.
+
+```
+```{r}
+pool <- plm(PE ~ SN + TC + KS + IN + gender, data=p_dat, model="pooling")
+summary(pool)
+
+```
+```{r}
+# Breusch-Pagan Lagrange Multiplier for random effects. Null is no panel effect (i.e. OLS better).
+# There is evidence of significant differences across Location
+plmtest(pool, type=c("bp"))
+```
+Heteroskedasticity testing
+```{r}
+#hetersokedasticity is not detected
+bptest(PE ~ SN + TC + KS + IN + gender + factor(location), data = p_dat, studentize=F)
+```
+
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
